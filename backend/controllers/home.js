@@ -31,7 +31,7 @@ exports.getAllExpenses = (req, res, next)=>{
     //const page=Number.parseInt(req.query.page);
     //const limit=Number.parseInt(2);
    
-     req.user.getExpenses({limit:3,
+     req.user.getExpenses({limit:10,
         offset:0})
     
     .then(expenses=>{
