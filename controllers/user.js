@@ -1,8 +1,9 @@
 const User = require('../models/user')
-const { json } = require('body-parser');
 const bcrypt = require('bcrypt');
+const { json } = require('body-parser');
 const saltRounds = 10;
-
+const jwt = require('jsonwebtoken')
+const sgMail = require('@sendgrid/mail')
 
 exports.postSignup = async (req, res, next)=>{
     let userDetails = req.body
@@ -25,43 +26,59 @@ exports.postSignup = async (req, res, next)=>{
     }
 }
 
-
 exports.postLogin = async(req,res,next)=>{
-    
 
     const email = req.body.email
     const password = req.body.password
 
-    let users = await User.findAll({where:{email: email}}).then(users=>{
+    let users = await User.findAll({where:{email: email}})
 
     if(users.length>0){
-        if(users[0].password===password){
-            res.status(200).json({success: true, message:"Logged In success"})
-        }
-        else{
-            res.status(400).json({success:false,message:"Check your details"})
-        }
-    //     const dbid = users[0].id
-    //     const dbpass = users[0].password
-    //     const dbname = users[0].name
-    //     const dbemail = users[0].email
+        const dbid = users[0].id
+        const dbpass = users[0].password
+        const dbname = users[0].name
+        const dbemail = users[0].email
 
-    //     const match = await bcrypt.compare(password, dbpass)
+        const match = await bcrypt.compare(password, dbpass)
 
-    //     if(match){
-    //         //const token = jwt.sign(dbid,TOKEN_SECRET)
-           
-    //         res.status(200).json({msg:'Login successful',email: dbemail, name: dbname })
-    //     }else{
-    //         res.status(401).json({msg: 'User not autorized'})
-    //     }
-    // }else{
-    //     res.status(404).json({msg: 'User not found'})
+        if(match){
+            const token = jwt.sign(dbid, process.env.TOKEN_SECRET)
+            res.status(200).json({msg:'Login successful', token: token, email: dbemail, name: dbname })
+        }else{
+            res.status(401).json({msg: 'User not autorized'})
+        }
+    }else{
+        res.status(404).json({msg: 'User not found'})
     }
-    else{
-        res.status(404).json({success:false,message:"No user"})
-    }
-}).catch(err=>{
-    res.status(500).json({success:false,message:"err"})
-})
 }
+
+exports.postForgotPassword = async (req, res, next)=>{
+    let email = req.body.email
+    let users = await User.findAll({where:{email: email}})
+
+    //console.log(users)
+
+    if(users.length === 0){
+        res.status(404).json({msg: 'User does not exist'})
+    }else{
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+        const msg = {
+        to: email, // Change to your recipient
+        from: 'kedargogi420@gmail.com', // Change to your verified sender
+        subject: 'Sending with SendGrid is Fun',
+        text: 'and easy to do anywhere, even with Node.js',
+        html: '<strong>and easy to do anywhere, even with Node.js</strong>',
+        }
+        sgMail
+        .send(msg)
+        .then(() => {
+            console.log('Email sent')
+        })
+        .catch((error) => {
+            console.error(error)
+        })
+        res.status(200).json({msg: 'User found'})
+    }
+    
+}
+
